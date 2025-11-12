@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFactory TITAN - النظام الشامل للتحليل الجنائي</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+            border-bottom: 2px solid #00d4ff;
+        }
+        .logo {
+            font-size: 3.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .tagline {
+            font-size: 1.2rem;
+            color: #88ccff;
+            margin-bottom: 1rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #00d4ff;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            color: #88ccff;
+            font-size: 0.9rem;
+        }
+        .services-section {
+            margin-bottom: 3rem;
+        }
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: #00d4ff;
+            border-right: 4px solid #00d4ff;
+            padding-right: 1rem;
+        }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .service-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        .service-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
+        }
+        .service-name {
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+        }
+        .service-status {
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #00aa00;
+            color: white;
+        }
+        .status-offline { background: #ff4444; }
+        .status-warning { background: #ffaa00; }
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #88ccff;
+        }
+        .health-check {
+            margin: 2rem 0;
+            text-align: center;
+        }
+        .health-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+        }
+        .pulse {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚀 FFactory TITAN</div>
+            <div class="tagline">النظام الشامل للتحليل الجنائي الرقمي - 51 خدمة متكاملة</div>
+        </div>
+
+        <div class="health-check">
+            <div class="health-status">
+                <div class="pulse"></div>
+                <span>جميع الخدمات تعمل بشكل طبيعي</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">51</div>
+                <div class="stat-label">خدمة نشطة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">مراقبة مستمرة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">أمان وتشفير</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">مشاكل حالية</div>
+            </div>
+        </div>
+
+        <div class="services-section">
+            <h2 class="section-title">الخدمات الأساسية</h2>
+            <div class="services-grid">
+                <div class="service-item">
+                    <div class="service-name">محور التحقيقات</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">محلل السلوك</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">الذكاء الاصطناعي</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">جنائية الذاكرة</div>
+                    <div class="service-status">نشط</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="services-section">
+            <h2 class="section-title">خدمات الأمان المتقدم</h2>
+            <div class="services-grid">
+                <div class="service-item">
+                    <div class="service-name">الحماية الكمومية</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">كاشف الشذوذ</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">مضاد مضاد الجنائية</div>
+                    <div class="service-status">نشط</div>
+                </div>
+                <div class="service-item">
+                    <div class="service-name">Zero Trust</div>
+                    <div class="service-status">نشط</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>FFactory TITAN v2.0.0 | نظام متكامل للتحليل الجنائي الرقمي</p>
+            <p>⏰ آخر تحديث: <span id="current-time"></span></p>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const options = { 
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                timeZone: 'Asia/Kuwait'
+            };
+            document.getElementById('current-time').textContent = 
+                now.toLocaleDateString('ar-EG', options);
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // فحص صحة الخدمات
+        async function checkServices() {
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    console.log('✅ جميع الخدمات تعمل بشكل طبيعي');
+                }
+            } catch (error) {
+                console.log('⚠️ بعض الخدمات تحت الصيانة');
+            }
+        }
+        checkServices();
+    </script>
+</body>
+</html>

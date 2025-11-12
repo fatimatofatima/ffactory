@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.30
+psycopg[binary,pool]>=3.2
+neo4j>=5.21
+rapidfuzz>=3.9
+phonenumbers>=8.13
+python-dateutil>=2.9

@@ -1,0 +1,26 @@
+name: ffactory
+networks: { ffactory_ffactory_net: { external: true } }
+volumes: { embeds_data: {} }
+
+services:
+  ocr-engine:
+    build: { context: ../apps/ocr-engine, dockerfile: Dockerfile }
+    container_name: ffactory_ocr
+    networks: [ ffactory_ffactory_net ]
+    ports: [ "127.0.0.1:8091:8091" ]
+    healthcheck: { test: ["CMD","curl","-fsS","http://127.0.0.1:8091/health"], interval: 10s, timeout: 5s, retries: 40 }
+
+  face-engine:
+    build: { context: ../apps/face-engine, dockerfile: Dockerfile }
+    container_name: ffactory_face
+    networks: [ ffactory_ffactory_net ]
+    ports: [ "127.0.0.1:8092:8092" ]
+    healthcheck: { test: ["CMD","curl","-fsS","http://127.0.0.1:8092/health"], interval: 10s, timeout: 5s, retries: 40 }
+
+  embed-search:
+    build: { context: ../apps/embed-search, dockerfile: Dockerfile }
+    container_name: ffactory_embed
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "/opt/ffactory/data/embeds:/data/embeds" ]
+    ports: [ "127.0.0.1:8093:8093" ]
+    healthcheck: { test: ["CMD","curl","-fsS","http://127.0.0.1:8093/health"], interval: 10s, timeout: 5s, retries: 40 }

@@ -1,0 +1,35 @@
+version: "3.8"
+services:
+  db:
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${PGUSER:-forensic_user} -d ${PGDB:-forensic_db} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  neo4j:
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:7474"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 40s
+
+  correlation-engine:
+    environment:
+      DB_URL: "postgresql://${PGUSER:-forensic_user}:${PGPASSWORD:-password}@db:5432/${PGDB:-forensic_db}"
+      NEO4J_URI: "bolt://neo4j:7687"
+      NEO4J_AUTH: "${NEO4J_AUTH:-none}"
+    command: ["uvicorn","correlation_service:app","--host","0.0.0.0","--port","8005"]
+    depends_on:
+      db:    {condition: service_healthy}
+      neo4j: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    ports: ["127.0.0.1:8005:8005"]
+    restart: unless-stopped

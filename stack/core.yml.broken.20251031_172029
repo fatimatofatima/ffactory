@@ -1,0 +1,139 @@
+
+networks:
+  ffactory_net:
+    driver: bridge
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  neo4j_data: {}
+  minio_data: {}
+  ollama_data: {}
+  asr_models: {}
+  backup_data: {}
+  vault_data: {}
+
+services:
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: "${PGPASSWORD}"
+      POSTGRES_DB: ${PGDB}
+    ports:
+      - "127.0.0.1:${PGPORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks: [ ffactory_net ]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${PGUSER} -d ${PGDB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ffactory_redis
+    restart: unless-stopped
+    command: ["redis-server","--requirepass","${REDIS_PASSWORD}"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    networks: [ ffactory_net ]
+    healthcheck:
+      test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: ffactory_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER}/${NEO4J_PASSWORD}"
+      NEO4J_PLUGINS: '["apoc","graph-data-science"]'
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+    ports:
+      - "127.0.0.1:${NEO4J_HTTP_PORT}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT}:7687"
+    volumes:
+      - neo4j_data:/data
+    networks: [ ffactory_net ]
+    healthcheck:
+      test: ["CMD-SHELL","wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:${MINIO_PORT}:9001"
+    volumes:
+      - minio_data:/data
+    networks: [ ffactory_net ]
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ffactory_ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks: [ ffactory_net ]
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ffactory_metabase
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${PGDB}
+      MB_DB_USER: ${PGUSER}
+      MB_DB_PASS: "${PGPASSWORD}"
+      MB_DB_HOST: db
+    networks: [ ffactory_net ]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ntp-server:
+    image: cturra/ntp
+    container_name: ffactory_ntp
+    restart: unless-stopped
+    cap_add: [ "SYS_TIME" ]
+    environment:
+      - NTP_SERVERS=pool.ntp.org,time.google.com
+      - INTERNAL_NTP_SERVER=true
+    networks: [ ffactory_net ]
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: ffactory_vault
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root_dev_token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    volumes:
+      - vault_data:/vault/file
+    networks: [ ffactory_net ]

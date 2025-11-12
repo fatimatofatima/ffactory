@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "Aa100200@@"
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    volumes:
+      - ffactory_postgres_data:/var/lib/postgresql/data
+    networks: [ ffactory_net ]
+networks:
+  ffactory_net: { external: true, name: ffactory_ffactory_net }
+volumes:
+  ffactory_postgres_data: { external: true, name: ffactory_postgres_data }

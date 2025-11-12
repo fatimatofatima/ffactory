@@ -1,0 +1,40 @@
+name: ffactory
+networks: { ffactory_ffactory_net: { external: true } }
+volumes: { nvision_cache: {}, nforensics_cache: {}, hashsets_data: {} }
+
+services:
+  vision-engine:
+    build: { context: ../apps/vision-engine, dockerfile: Dockerfile }
+    container_name: ffactory_vision
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "nvision_cache:/root/.cache" ]
+    ports: [ "127.0.0.1:8081:8081" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+
+  media-forensics:
+    build: { context: ../apps/media-forensics, dockerfile: Dockerfile }
+    container_name: ffactory_media_forensics
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "nforensics_cache:/root/.cache" ]
+    ports: [ "127.0.0.1:8082:8082" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+
+  hashset-service:
+    build: { context: ../apps/hashset-service, dockerfile: Dockerfile }
+    container_name: ffactory_hashset
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "hashsets_data:/data/hashsets" ]
+    ports: [ "127.0.0.1:8083:8083" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40

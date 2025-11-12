@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  prometheus:
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 3s
+      retries: 20
+  grafana:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+  frontend-dashboard:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/health || curl -fsS http://localhost:3000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 20
+  api-gateway:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 20

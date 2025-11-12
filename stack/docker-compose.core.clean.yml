@@ -1,0 +1,40 @@
+version: "3.9"
+name: ffactory
+networks:
+  default:
+    external: true
+    name: ffactory_ffactory_net
+services:
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    environment:
+      POSTGRES_USER: ffadmin
+      POSTGRES_PASSWORD: sirXeVyxd7nrG/mnOPdxFZNvhz7BLj/G5U6J835rQRU=
+      POSTGRES_DB: ffactory
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+    ports: [ "127.0.0.1:5433:5432" ]
+    networks: [default]
+  neo4j:
+    image: neo4j:5.22
+    container_name: ffactory_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/neo4jpass
+    volumes: [ "neo4jdata:/data" ]
+    ports: [ "127.0.0.1:7474:7474", "127.0.0.1:7687:7687" ]
+    networks: [default]
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory_minio
+    environment:
+      MINIO_ROOT_USER: ffminioadmin
+      MINIO_ROOT_PASSWORD: 4uY8b7rMD/tfqzYvov6dyb7pnobkw3aUnJyG5HeW9gw=
+    command: server --console-address ":9001" /data
+    volumes: [ "miniodata:/data" ]
+    ports: [ "127.0.0.1:9000:9000", "127.0.0.1:9001:9001" ]
+    networks: [default]
+  redis:
+    image: redis:7
+    container_name: ffactory_redis
+    networks: [default]
+volumes: { pgdata: {}, neo4jdata: {}, miniodata: {} }

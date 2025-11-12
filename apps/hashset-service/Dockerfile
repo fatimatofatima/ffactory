@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libfuzzy-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+VOLUME ["/data/hashsets"]
+EXPOSE 8083
+ENV UVICORN_WORKERS=2
+CMD ["python","-m","uvicorn","app:api","--host","0.0.0.0","--port","8083","--workers","2"]

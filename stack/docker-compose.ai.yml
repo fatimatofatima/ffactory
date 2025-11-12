@@ -1,0 +1,47 @@
+version: "3.9"
+name: ffactory
+networks: { ffactory_ffactory_net: { external: true } }
+volumes: { asr_cache: {}, nlp_cache: {}, vision_cache: {} }
+
+services:
+  asr-engine:
+    build: { context: ../apps/asr-engine, dockerfile: Dockerfile }
+    container_name: ffactory_asr
+    env_file: [ ../.env ]
+    environment:
+      - MODEL_SIZE=medium
+      - LANGUAGE=ar
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "asr_cache:/root/.cache" ]
+    ports: [ "127.0.0.1:8086:8080" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  neural-core:
+    build: { context: ../apps/neural-core, dockerfile: Dockerfile }
+    container_name: ffactory_nlp
+    env_file: [ ../.env ]
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "nlp_cache:/root/.cache" ]
+    ports: [ "127.0.0.1:8000:8000" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  vision-engine:
+    build: { context: ../apps/vision-engine, dockerfile: Dockerfile }
+    container_name: ffactory_vision
+    env_file: [ ../.env ]
+    networks: [ ffactory_ffactory_net ]
+    volumes: [ "vision_cache:/root/.cache" ]
+    ports: [ "127.0.0.1:8081:8081" ]
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://127.0.0.1:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30

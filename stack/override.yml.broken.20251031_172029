@@ -1,0 +1,47 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-hard: &hard
+  logging: *default-logging
+  ulimits:
+    nofile: 65535
+  security_opt:
+    - "no-new-privileges:true"
+
+services:
+  db:                       <<: *hard
+  redis:                    <<: *hard
+  neo4j:                    <<: *hard
+  minio:                    <<: *hard
+  ollama:                   <<: *hard
+  metabase:                 <<: *hard
+  ntp-server:               <<: *hard
+  vault:                    <<: *hard
+  investigation-api:        <<: *hard
+  behavioral-analytics:     <<: *hard
+  feedback-api:             <<: *hard
+  neural-core:              <<: *hard
+  correlation-engine:       <<: *hard
+  asr-engine:               <<: *hard
+  social-intelligence:      <<: *hard
+  quantum-security:         <<: *hard
+  ai-reporting:             <<: *hard
+  orchestrator:             <<: *hard
+  ingest-service:           <<: *hard
+  error-aggregator:         <<: *hard
+  integrity-monitor:        <<: *hard
+  anomaly-detector:         <<: *hard
+  deception-detector:       <<: *hard
+  social-analyzer:          <<: *hard
+  chain-of-custody-manager: <<: *hard
+  advanced-steganalysis:    <<: *hard
+  memory-forensics:         <<: *hard
+  temporal-forensics:       <<: *hard
+  media-forensics-pro:      <<: *hard
+  medical-forensics:        <<: *hard
+  frontend-dashboard:       <<: *hard
+  bot-admin:                <<: *hard
+  bot-reports:              <<: *hard

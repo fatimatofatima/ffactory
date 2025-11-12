@@ -1,0 +1,93 @@
+services:
+  investigation-api:
+    build: { context: ../apps/investigation-api }
+    container_name: ffactory_investigation_api
+    restart: unless-stopped
+    ports: [ "127.0.0.1:${INVESTIGATION_API_PORT}:8080" ]
+    networks: [ ffactory_net ]
+    depends_on: [ neo4j ]
+    healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] }
+
+  behavioral-analytics:
+    build: { context: ../apps/behavioral-analytics }
+    container_name: ffactory_behavioral_analytics
+    restart: unless-stopped
+    ports: [ "127.0.0.1:${ANALYTICS_PORT}:8080" ]
+    networks: [ ffactory_net ]
+    depends_on: [ redis ]
+    healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] }
+
+  feedback-api:
+    build: { context: ../apps/feedback-api }
+    container_name: ffactory_feedback_api
+    restart: unless-stopped
+    ports: [ "127.0.0.1:${FEEDBACK_API_PORT}:8080" ]
+    networks: [ ffactory_net ]
+    depends_on: [ db ]
+    healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] }
+
+  neural-core:
+    build: { context: ../apps/neural-core }
+    container_name: ffactory_neural_core
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8000:8080" ]
+    networks: [ ffactory_net ]
+
+  correlation-engine:
+    build: { context: ../apps/correlation-engine }
+    container_name: ffactory_correlation_engine
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8005:8080" ]
+    networks: [ ffactory_net ]
+
+  asr-engine:
+    build: { context: ../apps/asr-engine }
+    container_name: ffactory_asr_engine
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8004:8080" ]
+    volumes: [ asr_models:/root/.cache ]
+    networks: [ ffactory_net ]
+
+  social-intelligence:
+    build: { context: ../apps/social-intelligence }
+    container_name: ffactory_social_intelligence
+    restart: unless-stopped
+    networks: [ ffactory_net ]
+
+  quantum-security:
+    build: { context: ../apps/quantum-security }
+    container_name: ffactory_quantum_security
+    restart: unless-stopped
+    networks: [ ffactory_net ]
+
+  ai-reporting:
+    build: { context: ../apps/ai-reporting }
+    container_name: ffactory_ai_reporting
+    restart: unless-stopped
+    ports: [ "127.0.0.1:${AI_REPORT_PORT}:8080" ]
+    networks: [ ffactory_net ]
+
+  orchestrator:
+    build: { context: ../apps/orchestrator }
+    container_name: ffactory_orchestrator
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8060:8060" ]
+    networks: [ ffactory_net ]
+    depends_on: [ db, redis ]
+
+  ingest-service:
+    build: { context: ../apps/ingest-service }
+    container_name: ffactory_ingest_service
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8001:8001" ]
+    volumes: [ minio_data:/data_minio:ro ]
+    networks: [ ffactory_net ]
+    depends_on: [ minio, orchestrator ]
+
+  error-aggregator:
+    build: { context: ../apps/error-aggregator }
+    container_name: ffactory_error_aggregator
+    restart: unless-stopped
+    ports: [ "127.0.0.1:8075:8075" ]
+    networks: [ ffactory_net ]
+    depends_on: [ db ]

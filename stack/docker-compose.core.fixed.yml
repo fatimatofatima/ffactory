@@ -1,0 +1,84 @@
+name: ffactory
+networks:
+  ffactory_ffactory_net:
+    external: true
+
+volumes:
+  ff_pg: {}
+  ff_minio: {}
+  ff_neo4j: {}
+
+services:
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    env_file: [ ../.env ]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ffadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ffpass}
+      POSTGRES_DB: ${POSTGRES_DB:-ffactory}
+      POSTGRES_INITDB_ARGS: --data-checksums
+    volumes:
+      - ff_pg:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - ffactory_ffactory_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ffadmin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7
+    container_name: ffactory_redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-ffredis}"]
+    env_file: [ ../.env ]
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - ffactory_ffactory_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ffredis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  neo4j:
+    image: neo4j:5.22
+    container_name: ffactory_neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/neo4jpass}
+    volumes:
+      - ff_neo4j:/data
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    networks:
+      - ffactory_ffactory_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory_minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server --console-address ":9001" /data
+    volumes:
+      - ff_minio:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    networks:
+      - ffactory_ffactory_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 10

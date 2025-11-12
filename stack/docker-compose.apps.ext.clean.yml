@@ -1,0 +1,41 @@
+version: "3.9"
+name: ffactory
+networks:
+  default:
+    external: true
+    name: ffactory_ffactory_net
+volumes: { hashsets_data: {} }
+services:
+  vision-engine:
+    build: { context: ../apps/vision-engine, dockerfile: Dockerfile }
+    container_name: ffactory_vision
+    networks: [default]
+    ports: [ "127.0.0.1:8081:8080" ]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+  media-forensics:
+    build: { context: ../apps/media-forensics, dockerfile: Dockerfile }
+    container_name: ffactory_media_forensics
+    networks: [default]
+    ports: [ "127.0.0.1:8082:8080" ]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+  hashset-service:
+    build: { context: ../apps/hashset-service, dockerfile: Dockerfile }
+    container_name: ffactory_hashset
+    environment:
+      NSRL_DB_PATH: /data/hashsets/nsrl.sqlite
+    volumes: [ "hashsets_data:/data/hashsets" ]
+    networks: [default]
+    ports: [ "127.0.0.1:8083:8080" ]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 40

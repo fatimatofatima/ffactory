@@ -1,0 +1,71 @@
+version: "3.9"
+services:
+  vision:
+    image: ealen/echo-server
+    container_name: ffactory_vision
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: vision
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  media_forensics:
+    image: ealen/echo-server
+    container_name: ffactory_media_forensics
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: media_forensics
+    ports:
+      - "127.0.0.1:8082:8080"
+
+  hashset:
+    image: ealen/echo-server
+    container_name: ffactory_hashset
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: hashset
+    ports:
+      - "127.0.0.1:8083:8080"
+
+  asr:
+    image: ealen/echo-server
+    container_name: ffactory_asr
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: asr
+    ports:
+      - "127.0.0.1:8086:8080"
+
+  nlp:
+    image: ealen/echo-server
+    container_name: ffactory_nlp
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: nlp
+    ports:
+      - "127.0.0.1:8000:8080"
+
+  correlation:
+    image: ealen/echo-server
+    container_name: ffactory_correlation
+    restart: unless-stopped
+    networks: [ ffactory_ffactory_net ]
+    environment:
+      PORT: 8080
+      SERVICE_NAME: correlation
+    ports:
+      - "127.0.0.1:8170:8080"
+
+networks:
+  ffactory_ffactory_net:
+    external: true

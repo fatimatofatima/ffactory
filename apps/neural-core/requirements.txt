@@ -1,0 +1,6 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+# مكتبات النماذج الضخمة (MBERT لـ Tamazight و AraBERT للدارجة/الفصحى)
+transformers>=4.35.0
+torch>=2.1.0 
+sentencepiece # لـ MBERT

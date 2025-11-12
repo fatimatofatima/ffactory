@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+FF="/opt/ffactory"
+STACK="$FF/stack"
+APPS="$FF/apps"
+BOTS="$APPS/telegram-bots"
+ENV_FILE="$STACK/.env"
+COMPOSE="$STACK/docker-compose.ultimate.yml"
+
+# ====== التوكنات التي زوّدتني بها ======
+NEXTWIN_TOKEN_RAW='8228013890:AAG10vBmgDlncVYA_quQUJBYb1OAVet1jZE.'
+ADMINSVC_TOKEN_RAW='7979966842:AAEAJVTu-yO0L3Xwi1hFilAp7ahQRmaWt6Q'
+
+# تطبيع: إزالة مسافة/نقطة نهائية إن وُجدت
+sanitize() { sed -e 's/[[:space:]]\+$//' -e 's/\.$//'; }
+NEXTWIN_TOKEN="$(printf "%s" "$NEXTWIN_TOKEN_RAW" | sanitize)"
+ADMINSVC_TOKEN="$(printf "%s" "$ADMINSVC_TOKEN_RAW" | sanitize)"
+
+echo "[*] استخدام NEXTWIN: $([ -n "$NEXTWIN_TOKEN" ] && echo OK || echo MISSING)"
+echo "[*] استخدام ADMIN  : $([ -n "$ADMINSVC_TOKEN" ] && echo OK || echo MISSING)"
+
+[ -f "$ENV_FILE" ] || { echo "❌ مفقود: $ENV_FILE"; exit 1; }
+[ -f "$COMPOSE" ]  || { echo "❌ مفقود: $COMPOSE";  exit 1; }
+
+mkdir -p "$BOTS"
+
+# ====== تحديث .env ======
+echo "[*] تحديث $ENV_FILE"
+awk -v k="ADMIN_BOT_TOKEN" -v v="$ADMINSVC_TOKEN" '
+  BEGIN{set=0} $0~"^"k"="{$0=k"="v; set=1} {print} END{if(!set)print k"="v}
+' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
+awk -v k="REPORTS_BOT_TOKEN" -v v="" '
+  BEGIN{set=0} $0~"^"k"="{$0=k"="v; set=1} {print} END{if(!set)print k"="v}
+' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
+awk -v k="NEXTWIN_BOT_TOKEN" -v v="$NEXTWIN_TOKEN" '
+  BEGIN{set=0} $0~"^"k"="{$0=k"="v; set=1} {print} END{if(!set)print k"="v}
+' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
+# تأكيد السماح بالمستخدم
+awk -v k="BOT_ALLOWED_USERS" -v v="795444729" '
+  BEGIN{set=0} $0~"^"k"="{$0=k"="v; set=1} {print} END{if(!set)print k"="v}
+' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
+echo "[OK] .env محدَّث"
+
+# ====== تحسين كود البوت (status حقيقي + whoami) ======
+cat > "$BOTS/requirements.txt" <<'PIP'
+python-telegram-bot==20.7
+psycopg2-binary==2.9.9
+requests==2.32.3
+PIP
+
+cat > "$BOTS/entry.py" <<'PY'
+import os, logging, requests, psycopg2, asyncio
+from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update
+
+logging.basicConfig(level=logging.INFO)
+ALLOWED = {x.strip() for x in os.getenv("ALLOWED_USERS","").split(",") if x.strip()}
+DB_URL = os.getenv("DB_URL","")
+SERVICE_URLS = {
+    "NeuralCore":"http://neural-core:8000/health",
+    "Correlator":"http://correlation-engine:8005/health",
+    "AI-Reporting":"http://ai-reporting:8080/health",
+    "MinIO":"http://minio:9000/minio/health/live",
+}
+
+def allowed(user_id:str)->bool:
+    return (not ALLOWED) or (str(user_id) in ALLOWED)
+
+async def start(update:Update, ctx:ContextTypes.DEFAULT_TYPE):
+    if not allowed(update.effective_user.id):
+        return await update.message.reply_text("⛔ غير مصرح.")
+    await update.message.reply_text("✅ البوت جاهز.")
+
+async def whoami(update:Update, ctx:ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"chat_id={update.effective_user.id}")
+
+def check_db()->bool:
+    if not DB_URL: return False
+    try:
+        with psycopg2.connect(DB_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+        return True
+    except Exception as e:
+        logging.warning(f"DB check failed: {e}")
+        return False
+
+def ping(url:str)->bool:
+    try:
+        r = requests.get(url, timeout=2.5)
+        return r.ok
+    except Exception:
+        return False
+
+async def status(update:Update, ctx:ContextTypes.DEFAULT_TYPE):
+    if not allowed(update.effective_user.id):
+        return await update.message.reply_text("⛔ غير مصرح.")
+    parts = []
+    parts.append(f"DB={'up' if check_db() else 'down'}")
+    for name,url in SERVICE_URLS.items():
+        parts.append(f"{name}={'up' if ping(url) else 'down'}")
+    await update.message.reply_text(" | ".join(parts))
+
+async def main():
+    token = os.getenv("BOT_TOKEN")
+    if not token: raise SystemExit("BOT_TOKEN not set")
+    app = Application.builder().token(token).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("whoami", whoami))
+    app.add_handler(CommandHandler("status", status))
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+PY
+
+cat > "$BOTS/Dockerfile" <<'DOCK'
+FROM python:3.11-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY entry.py .
+CMD ["python","entry.py"]
+DOCK
+
+echo "[OK] كود البوت جاهز"
+
+# ====== إضافة خدمة bot-nextwin إلى الـ compose إن لم تكن موجودة ======
+if ! grep -q '^  bot-nextwin:' "$COMPOSE"; then
+  echo "[*] إضافة خدمة bot-nextwin إلى $COMPOSE"
+  cat >> "$COMPOSE" <<'YAML'
+
+  bot-nextwin:
+    build: ../apps/telegram-bots
+    container_name: ffactory_bot_nextwin
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${NEXTWIN_BOT_TOKEN}
+      BOT_TYPE: nextwin
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      ALLOWED_USERS: ${BOT_ALLOWED_USERS}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["bots"]
+    networks:
+      - ffactory_net
+YAML
+fi
+
+# تأكد من وجود bot-admin (لو مفقودة نضيفها)
+if ! grep -q '^  bot-admin:' "$COMPOSE"; then
+  echo "[*] إضافة خدمة bot-admin إلى $COMPOSE"
+  cat >> "$COMPOSE" <<'YAML'
+
+  bot-admin:
+    build: ../apps/telegram-bots
+    container_name: ffactory_bot_admin
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${ADMIN_BOT_TOKEN}
+      BOT_TYPE: admin
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      ALLOWED_USERS: ${BOT_ALLOWED_USERS}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["bots"]
+    networks:
+      - ffactory_net
+YAML
+fi
+
+echo "[*] بناء صورة البوت وتشغيلها"
+pushd "$STACK" >/dev/null
+if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
+$DC -p ffactory -f "$COMPOSE" build bot-admin bot-nextwin
+$DC -p ffactory -f "$COMPOSE" up -d --no-deps bot-admin bot-nextwin
+popd >/dev/null
+
+echo "[OK] تمت العملية. اختبر من تيليجرام:"
+echo "  • /whoami  (لازم يرجّع 795444729)"
+echo "  • /status  (DB=up | NeuralCore=.. | Correlator=.. | AI-Reporting=.. | MinIO=..)"

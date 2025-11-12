@@ -1,0 +1,11 @@
+services:
+  frontend-dashboard:
+    build: { context: ../apps/frontend-dashboard }
+    container_name: ffactory_frontend_dashboard
+    restart: unless-stopped
+    ports: [ "0.0.0.0:${FRONTEND_PORT}:3000" ]
+    networks: [ ffactory_net ]
+    depends_on:
+      - investigation-api
+      - behavioral-analytics
+      - feedback-api

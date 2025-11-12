@@ -1,0 +1,4 @@
+fastapi==0.110.0
+uvicorn[standard]==0.30.0
+requests==2.31.0
+ssdeep==3.4

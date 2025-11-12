@@ -1,0 +1,434 @@
+version: "3.9"
+services:
+  evidence-tracker:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  geospatial-tracker:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  orchestrator:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  case-manager:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  investigation-api:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  behavioral-analytics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  api-gateway:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  medical-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  vault:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  quantum-security:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  temporal-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  zero-trust-enforcer:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  anomaly-detector:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  asr-engine:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  data-export-service:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  feedback-api:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  frontend-dashboard:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  minio:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  ingest-service:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  media-forensics-pro:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  mobile-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  advanced-steganalysis:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  anti-anti-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  integrity-monitor:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  linguistic-analysis:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  network-mapper:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  report-generator:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  threat-intelligence:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  cloud-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  memory-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  audit-logger:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  backup-manager:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  chain-of-custody-manager:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  deepfake-detector:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  iot-forensics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  blockchain-analyzer:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  correlation-engine:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  criminal-profiler:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  neural-core:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  predictive-analytics:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  social-analyzer:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  deception-detector:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  metabase:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  social-intelligence:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  telegram-bots:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  ai-reporting:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  behavioral-patterns:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+  error-aggregator:
+    entrypoint: ["docker-entrypoint.sh"]
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - NEO4J_HOST=neo4j
+      - NEO4J_PORT=7687
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379

@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ff-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ffactory}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ffactory_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-ffactory}
+    volumes:
+      - /opt/ffactory/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER:-ffactory} -d ${POSTGRES_DB:-ffactory}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ff-redis
+    restart: unless-stopped
+    command: ["redis-server","--appendonly","yes"]
+    volumes:
+      - /opt/ffactory/data/redis:/data
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.22
+    container_name: ff-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4jPass}
+      NEO4J_dbms_memory_heap_initial__size: 512M
+      NEO4J_dbms_memory_heap_max__size: 1024M
+      NEO4J_dbms_memory_pagecache_size: 512M
+    volumes:
+      - /opt/ffactory/data/neo4j:/data
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    healthcheck:
+      test: ["CMD-SHELL","wget -qO- http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: ff-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - /opt/ffactory/data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:9000/minio/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10

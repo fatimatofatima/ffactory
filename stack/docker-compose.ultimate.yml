@@ -1,0 +1,167 @@
+
+networks:
+  ffactory_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  neo4j_data: {}
+  minio_data: {}
+  ollama_data: {}
+  vault_data: {}
+  case_data: {}
+
+services:
+  # === CORE ===
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDB}
+      TZ: ${TZ}
+      PGTZ: ${TZ}
+    ports: ["127.0.0.1:${PGPORT}:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: [ffactory_net]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${PGUSER} -d ${PGDB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ffactory_redis
+    restart: unless-stopped
+    command: ["redis-server","--requirepass","${REDIS_PASSWORD}","--maxmemory","512mb","--maxmemory-policy","allkeys-lru"]
+    ports: ["127.0.0.1:${REDIS_PORT}:6379"]
+    networks: [ffactory_net]
+    healthcheck: { test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"], interval: 10s, timeout: 5s, retries: 3 }
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: ffactory_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      TZ: ${TZ}
+    ports:
+      - "127.0.0.1:${NEO4J_HTTP_PORT}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT}:7687"
+    volumes: [neo4j_data:/data]
+    networks: [ffactory_net]
+    healthcheck: { test: ["CMD-SHELL","wget -q --spider http://localhost:7474 || exit 1"], interval: 15s, timeout: 10s, retries: 3 }
+
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      TZ: ${TZ}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:${MINIO_PORT}:9001"
+    volumes: [minio_data:/data]
+    networks: [ffactory_net]
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ffactory_ollama
+    restart: unless-stopped
+    ports: ["127.0.0.1:${OLLAMA_PORT}:11434"]
+    volumes: [ollama_data:/root/.ollama]
+    networks: [ffactory_net]
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: ffactory_vault
+    restart: unless-stopped
+    ports: ["127.0.0.1:8200:8200"]
+    volumes: [vault_data:/vault/file]
+    networks: [ffactory_net]
+
+  # Metabase (3002) + Dashboard (3001)
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ffactory_metabase
+    restart: unless-stopped
+    ports: ["127.0.0.1:3002:3000"]
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${PGDB}
+      MB_DB_USER: ${PGUSER}
+      MB_DB_PASS: ${PGPASSWORD}
+      MB_DB_HOST: db
+    networks: [ffactory_net]
+    depends_on: { db: { condition: service_healthy } }
+
+  frontend-dashboard:
+    build: { context: ../apps/frontend-dashboard }
+    container_name: ffactory_frontend_dashboard
+    restart: unless-stopped
+    ports: ["0.0.0.0:${FRONTEND_PORT}:3000"]
+    networks: [ffactory_net]
+    depends_on:
+      investigation-api: { condition: service_started }
+      behavioral-analytics: { condition: service_started }
+      feedback-api: { condition: service_started }
+
+  # === 51 Services (stubs build contexts) ===
+  investigation-api:        { build: { context: ../apps/investigation-api },        container_name: ffactory_investigation_api,      restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [neo4j, db, redis] }
+  behavioral-analytics:     { build: { context: ../apps/behavioral-analytics },     container_name: ffactory_behavioral_analytics,   restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [neo4j, redis] }
+  feedback-api:             { build: { context: ../apps/feedback-api },             container_name: ffactory_feedback_api,           restart: unless-stopped, expose: ["8070"], networks: [ffactory_net], depends_on: [db] }
+  neural-core:              { build: { context: ../apps/neural-core },              container_name: ffactory_neural_core,            restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [ollama, redis] }
+  correlation-engine:       { build: { context: ../apps/correlation-engine },       container_name: ffactory_correlation_engine,     restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [db, neo4j] }
+  orchestrator:             { build: { context: ../apps/orchestrator },             container_name: ffactory_orchestrator,           restart: unless-stopped, expose: ["8060"], networks: [ffactory_net], depends_on: [db, redis] }
+  ingest-service:           { build: { context: ../apps/ingest-service },           container_name: ffactory_ingest_service,         restart: unless-stopped, expose: ["8001"], networks: [ffactory_net], depends_on: [minio] }
+  quantum-security:         { build: { context: ../apps/quantum-security },         container_name: ffactory_quantum_security,       restart: unless-stopped, expose: ["8082"], networks: [ffactory_net], depends_on: [vault] }
+  integrity-monitor:        { build: { context: ../apps/integrity-monitor },        container_name: ffactory_integrity_monitor,      restart: unless-stopped, expose: ["8100"], networks: [ffactory_net] }
+  anomaly-detector:         { build: { context: ../apps/anomaly-detector },         container_name: ffactory_anomaly_detector,       restart: unless-stopped, expose: ["8101"], networks: [ffactory_net], depends_on: [redis] }
+  deception-detector:       { build: { context: ../apps/deception-detector },       container_name: ffactory_deception_detector,     restart: unless-stopped, expose: ["8102"], networks: [ffactory_net] }
+  anti-anti-forensics:      { build: { context: ../apps/anti-anti-forensics },      container_name: ffactory_anti_anti_forensics,    restart: unless-stopped, expose: ["8104"], networks: [ffactory_net] }
+  zero-trust-enforcer:      { build: { context: ../apps/zero-trust-enforcer },      container_name: ffactory_zero_trust_enforcer,    restart: unless-stopped, expose: ["8106"], networks: [ffactory_net] }
+  asr-engine:               { build: { context: ../apps/asr-engine },               container_name: ffactory_asr_engine,             restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [ollama] }
+  social-intelligence:      { build: { context: ../apps/social-intelligence },      container_name: ffactory_social_intelligence,    restart: unless-stopped, expose: ["8080"], networks: [ffactory_net], depends_on: [neo4j] }
+  ai-reporting:             { build: { context: ../apps/ai-reporting },             container_name: ffactory_ai_reporting,           restart: unless-stopped, expose: ["8081"], networks: [ffactory_net], depends_on: [ollama, db] }
+  predictive-analytics:     { build: { context: ../apps/predictive-analytics },     container_name: ffactory_predictive_analytics,   restart: unless-stopped, expose: ["8125"], networks: [ffactory_net], depends_on: [db, redis] }
+  behavioral-patterns:      { build: { context: ../apps/behavioral-patterns },      container_name: ffactory_behavioral_patterns,    restart: unless-stopped, expose: ["8126"], networks: [ffactory_net], depends_on: [neo4j] }
+  linguistic-analysis:      { build: { context: ../apps/linguistic-analysis },      container_name: ffactory_linguistic_analysis,    restart: unless-stopped, expose: ["8127"], networks: [ffactory_net], depends_on: [ollama] }
+  deepfake-detector:        { build: { context: ../apps/deepfake-detector },        container_name: ffactory_deepfake_detector,      restart: unless-stopped, expose: ["8128"], networks: [ffactory_net] }
+  advanced-steganalysis:    { build: { context: ../apps/advanced-steganalysis },    container_name: ffactory_advanced_steganalysis,  restart: unless-stopped, expose: ["8114"], networks: [ffactory_net] }
+  memory-forensics:         { build: { context: ../apps/memory-forensics },         container_name: ffactory_memory_forensics,       restart: unless-stopped, expose: ["8115"], networks: [ffactory_net] }
+  temporal-forensics:       { build: { context: ../apps/temporal-forensics },       container_name: ffactory_temporal_forensics,     restart: unless-stopped, expose: ["8116"], networks: [ffactory_net] }
+  media-forensics-pro:      { build: { context: ../apps/media-forensics-pro },      container_name: ffactory_media_forensics_pro,    restart: unless-stopped, expose: ["8001"], networks: [ffactory_net] }
+  medical-forensics:        { build: { context: ../apps/medical-forensics },        container_name: ffactory_medical_forensics,      restart: unless-stopped, expose: ["8010"], networks: [ffactory_net] }
+  mobile-forensics:         { build: { context: ../apps/mobile-forensics },         container_name: ffactory_mobile_forensics,       restart: unless-stopped, expose: ["8130"], networks: [ffactory_net] }
+  iot-forensics:            { build: { context: ../apps/iot-forensics },            container_name: ffactory_iot_forensics,          restart: unless-stopped, expose: ["8131"], networks: [ffactory_net] }
+  cloud-forensics:          { build: { context: ../apps/cloud-forensics },          container_name: ffactory_cloud_forensics,        restart: unless-stopped, expose: ["8132"], networks: [ffactory_net] }
+  blockchain-analyzer:      { build: { context: ../apps/blockchain-analyzer },      container_name: ffactory_blockchain_analyzer,    restart: unless-stopped, expose: ["8133"], networks: [ffactory_net] }
+  case-manager:             { build: { context: ../apps/case-manager },             container_name: ffactory_case_manager,           restart: unless-stopped, expose: ["8140"], networks: [ffactory_net], depends_on: [db, redis] }
+  evidence-tracker:         { build: { context: ../apps/evidence-tracker },         container_name: ffactory_evidence_tracker,       restart: unless-stopped, expose: ["8141"], networks: [ffactory_net], depends_on: [db] }
+  chain-of-custody-manager: { build: { context: ../apps/chain-of-custody-manager }, container_name: ffactory_chain_of_custody_manager, restart: unless-stopped, expose: ["8105"], networks: [ffactory_net], depends_on: [db] }
+  report-generator:         { build: { context: ../apps/report-generator },         container_name: ffactory_report_generator,       restart: unless-stopped, expose: ["8142"], networks: [ffactory_net], depends_on: [db] }
+  audit-logger:             { build: { context: ../apps/audit-logger },             container_name: ffactory_audit_logger,           restart: unless-stopped, expose: ["8143"], networks: [ffactory_net], depends_on: [db] }
+  error-aggregator:         { build: { context: ../apps/error-aggregator },         container_name: ffactory_error_aggregator,       restart: unless-stopped, expose: ["8075"], networks: [ffactory_net], depends_on: [redis] }
+  social-analyzer:          { build: { context: ../apps/social-analyzer },          container_name: ffactory_social_analyzer,        restart: unless-stopped, expose: ["8103"], networks: [ffactory_net], depends_on: [neo4j] }
+  threat-intelligence:      { build: { context: ../apps/threat-intelligence },      container_name: ffactory_threat_intelligence,    restart: unless-stopped, expose: ["8121"], networks: [ffactory_net], depends_on: [db, redis] }
+  criminal-profiler:        { build: { context: ../apps/criminal-profiler },        container_name: ffactory_criminal_profiler,      restart: unless-stopped, expose: ["8120"], networks: [ffactory_net], depends_on: [neo4j] }
+  geospatial-tracker:       { build: { context: ../apps/geospatial-tracker },       container_name: ffactory_geospatial_tracker,     restart: unless-stopped, expose: ["8122"], networks: [ffactory_net], depends_on: [db] }
+  network-mapper:           { build: { context: ../apps/network-mapper },           container_name: ffactory_network_mapper,         restart: unless-stopped, expose: ["8123"], networks: [ffactory_net], depends_on: [neo4j] }
+  backup-manager:           { build: { context: ../apps/backup-manager },           container_name: ffactory_backup_manager,         restart: on-failure,     expose: ["8000"], networks: [ffactory_net], depends_on: [db] }
+  telegram-bots:            { build: { context: ../apps/telegram-bots },            container_name: ffactory_telegram_bots,          restart: unless-stopped, expose: ["8000"], networks: [ffactory_net] }
+  api-gateway:              { build: { context: ../apps/api-gateway },              container_name: ffactory_api_gateway,            restart: unless-stopped, expose: ["8170"], networks: [ffactory_net], depends_on: [investigation-api, behavioral-analytics, case-manager] }
+  data-export-service:      { build: { context: ../apps/data-export-service },      container_name: ffactory_data_export_service,    restart: unless-stopped, expose: ["8172"], networks: [ffactory_net], depends_on: [db] }

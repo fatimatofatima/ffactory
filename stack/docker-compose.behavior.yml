@@ -1,0 +1,10 @@
+version: "3.9"
+name: ffactory
+networks: { default: { external: true, name: ffactory_ffactory_net } }
+services:
+  behavioral-analytics:
+    build: { context: ../apps/behavior-analytics }
+    container_name: ffactory_behavioral_analytics
+    networks: [default]
+    ports: [ "127.0.0.1:8095:8080" ]
+    healthcheck: { test: ["CMD","wget","-qO-","http://localhost:8080/health"], interval: 10s, timeout: 5s, retries: 40 }
