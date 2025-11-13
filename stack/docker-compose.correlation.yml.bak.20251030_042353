@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  db:
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${PGUSER:-forensic_user} -d ${PGDB:-forensic_db} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  neo4j:
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  correlation-engine:
+    depends_on:
+      db:    {condition: service_healthy}
+      neo4j: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD","curl","-fsS","http://localhost:8005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:8005:8005"

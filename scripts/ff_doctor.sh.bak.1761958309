@@ -1,0 +1,213 @@
+# FF_PATCH:BEGIN
+. /opt/ffactory/scripts/ff_lib.sh 2>/dev/null || true
+. /opt/ffactory/scripts/ff_lib_multi.sh 2>/dev/null || true
+MEMORY_SCRIPT="/opt/ffactory/scripts/system_memory.sh"
+
+_guess_port(){ # أحسن تخمين لبورت منشور
+  local svc="$1" cn p
+  cn=$(docker ps --format '{{.Names}}' | grep -E "ffactory[_-]${svc//-/_}$" || true)
+  [[ -z "$cn" ]] && cn=$(docker ps --format '{{.Names}}' | grep -i "$svc" | head -1 || true)
+  if [[ -n "$cn" ]]; then p=$(docker port "$cn" 2>/dev/null | head -1 | awk -F: '{print $2}'); fi
+  echo "${p:-}"
+}
+
+mem_hook(){ # يسجل في الذاكرة قبل أي restart
+  local svc="$1" p; p=$(_guess_port "$svc")
+  [[ -x "$MEMORY_SCRIPT" ]] && "$MEMORY_SCRIPT" service_restart "$svc" "${p:-}" || true
+}
+
+docker_compose_restart(){ # compose-aware restart
+  local svc="$1" F
+  F="$(svc_compose "$svc" "$COMPOSE")"; [[ -n "$F" ]] || F="$COMPOSE"
+  mem_hook "$svc"
+  docker compose -f "$F" restart "$svc"
+}
+
+docker_compose_up(){ # compose-aware up --build
+  local svc="$1" F
+  F="$(svc_compose "$svc" "$COMPOSE")"; [[ -n "$F" ]] || F="$COMPOSE"
+  docker compose -f "$F" up -d --build "$svc"
+}
+# FF_PATCH:END
+MEMORY_SCRIPT="/opt/ffactory/scripts/system_memory.sh"
+MEMORY_SCRIPT="/opt/ffactory/scripts/system_memory.sh"
+mem_hook(){ [[ -f \"$MEMORY_SCRIPT\" ]] && \"$MEMORY_SCRIPT\" service_restart \"$svc\" \"$port\"; }
+. /opt/ffactory/scripts/ff_lib.sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# -------- Config --------
+FF="/opt/ffactory"
+STACK="$FF/stack"
+LOGS="$FF/logs"
+ENV_FILE="$STACK/.env"
+COMPOSE="$STACK/docker-compose.complete.yml"
+[ -f "$COMPOSE" ] || COMPOSE="$STACK/docker-compose.ultimate.yml"
+LOG_FILE="$LOGS/doctor_$(date +%Y%m%d_%H%M%S).log"
+
+# -------- Helpers --------
+log(){ echo -e "[\e[32m$(date +%H:%M:%S)\e[0m] $*" | tee -a "$LOG_FILE"; }
+warn(){ echo -e "[\e[33m!\e[0m] $*" | tee -a "$LOG_FILE"; }
+err(){ echo -e "[\e[31m✘\e[0m] $*" | tee -a "$LOG_FILE"; exit 1; }
+need_root(){ [[ $EUID -eq 0 ]] || err "لازم تشغّل كـ root"; }
+has(){ command -v "$1" >/dev/null 2>&1; }
+envv(){ set -a; [ -f "$ENV_FILE" ] && . "$ENV_FILE"; set +a; }
+
+send_tg(){
+  envv
+  local msg="$1"
+  if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+    curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      -H "Content-Type: application/json" \
+      -d "$(jq -nc --arg chat_id "$TELEGRAM_CHAT_ID" --arg text "$msg" '{chat_id:$chat_id,text:$text,disable_web_page_preview:true}')" >/dev/null 2>&1 || true
+  fi
+}
+
+fix_compose(){
+  # نظّف CRLF/Tab/BOM + امسح version:
+  sed -i 's/\r$//' "$COMPOSE" || true
+  sed -i 's/\t/  /g' "$COMPOSE" || true
+  sed -i '1 s/^\xEF\xBB\xBF//' "$COMPOSE" || true
+  sed -i '/^version:/d' "$COMPOSE" || true
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE" config >/dev/null || err "ملف compose فيه خطأ."
+}
+
+ensure_pg_env(){
+  envv
+  local changed=0
+  for k in PGUSER PGPASSWORD PGDB PGPORT; do
+    if ! grep -q "^$k=" "$ENV_FILE"; then
+      changed=1
+      case "$k" in
+        PGUSER)      echo "PGUSER=${PGUSER:-forensic}" >> "$ENV_FILE" ;;
+        PGPASSWORD)  echo "PGPASSWORD=${PGPASSWORD:-Forensic123!}" >> "$ENV_FILE" ;;
+        PGDB)        echo "PGDB=${PGDB:-ffactory}" >> "$ENV_FILE" ;;
+        PGPORT)      echo "PGPORT=${PGPORT:-5433}" >> "$ENV_FILE" ;;
+      esac
+    fi
+  done
+  if ! grep -q "^DATABASE_URL=" "$ENV_FILE"; then
+    echo "DATABASE_URL=postgresql://${PGUSER:-forensic}:${PGPASSWORD:-Forensic123!}@db:${PGPORT:-5433}/${PGDB:-ffactory}" >> "$ENV_FILE"
+    changed=1
+  fi
+  [ $changed -eq 1 ] && chmod 600 "$ENV_FILE" && log "تم تحديث .env بقيم PG*" || true
+}
+
+# اكتشف بورت الخدمة (داخلي) أو ارجع 8080
+svc_port(){
+  local svc="$1" p=""
+  case "$svc" in
+    case-manager) p=8140 ;;
+    evidence-tracker) p=8141 ;;
+    report-generator) p=8142 ;;
+    audit-logger) p=8143 ;;
+    feedback-api) p=8070 ;;
+    orchestrator) p=8060 ;;
+    ingest-service) p=8001 ;;
+    media-forensics-pro) p=8001 ;;
+    api-gateway) p=8170 ;;
+    data-export-service) p=8172 ;;
+    zero-trust-enforcer) p=8106 ;;
+    advanced-steganalysis) p=8114 ;;
+    memory-forensics) p=8115 ;;
+    temporal-forensics) p=8116 ;;
+    predictive-analytics) p=8125 ;;
+    behavioral-patterns) p=8126 ;;
+    linguistic-analysis) p=8127 ;;
+    deepfake-detector) p=8128 ;;
+    mobile-forensics) p=8130 ;;
+    iot-forensics) p=8131 ;;
+    cloud-forensics) p=8132 ;;
+    blockchain-analyzer) p=8133 ;;
+    geospatial-tracker) p=8122 ;;
+    network-mapper) p=8123 ;;
+    integrity-monitor) p=8100 ;;
+    anomaly-detector) p=8101 ;;
+    deception-detector) p=8102 ;;
+    social-analyzer) p=8103 ;;
+    chain-of-custody-manager) p=8105 ;;
+    ai-reporting) p=8081 ;;
+    quantum-security) p=8082 ;;
+    correlation-engine) p=8083 ;;
+    asr-engine) p=8085 ;;
+    social-intelligence) p=8086 ;;
+    neural-core) p=8082 ;;
+    *) p=8080 ;;
+  esac
+  echo "$p"
+}
+
+http_health(){
+  local svc="$1"
+  local port="$(svc_port "$svc")"
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE" exec -T "$svc" sh -lc "apk add --no-cache curl >/dev/null 2>&1 || true; curl -fsS http://127.0.0.1:${port}/health" >/dev/null 2>&1
+}
+
+inspect_status(){
+  local cname="$1"
+  docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cname" 2>/dev/null || echo "unknown"
+}
+
+repair_svc(){
+  local svc="$1"
+  log "محاولة إصلاح: $svc"
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE" up -d --build "$svc" || true
+  sleep 5
+  if http_health "$svc"; then
+    log "✅ $svc تعافى بعد build/restart"
+  else
+    warn "$svc مازال غير سليم. آخر 80 سطر من اللوج:"
+    docker logs --tail=80 "ffactory_${svc//-/_}" 2>/dev/null || docker compose -f "$COMPOSE" logs --tail=80 "$svc" || true
+    send_tg "⚠️ FFactory Doctor: فشل فحص $svc بعد الإصلاح."
+  fi
+}
+
+make_health_html(){
+  envv
+  local out="$LOGS/health_$(date +%Y%m%d_%H%M%S).html"
+  local svcs=($(docker compose --env-file "$ENV_FILE" -f "$COMPOSE" ps --services 2>/dev/null || true))
+  {
+    echo '<!doctype html><meta charset="utf-8"><title>FFactory Health</title>'
+    echo '<style>body{font-family:system-ui;margin:24px} .ok{color:#0a0} .bad{color:#c00} .warn{color:#b80} table{border-collapse:collapse} td,th{border:1px solid #ddd;padding:6px 10px}</style>'
+    echo "<h1>FFactory Health - $(date)</h1><table><tr><th>Service</th><th>Status</th><th>HTTP /health</th></tr>"
+    for s in "${svcs[@]}"; do
+      st="$(inspect_status "ffactory_${s//-/_}")"
+      if http_health "$s"; then h="OK"; cls="ok"; else h="FAIL"; cls="bad"; fi
+      echo "<tr><td>$s</td><td>$st</td><td class=\"$cls\">$h</td></tr>"
+    done
+    echo "</table>"
+  } > "$out"
+  # انسخها للفرونت لو موجود
+  docker cp "$out" ffactory_frontend_dashboard:/usr/share/nginx/html/health.html >/dev/null 2>&1 || true
+  log "Health HTML: $out (وأيضًا نُسِخت إلى frontend-dashboard إن أمكن)"
+}
+
+main(){
+  need_root
+  has docker || err "Docker غير مثبت"
+  has jq || { log "تثبيت jq مؤقتًا…"; apt-get update -y && apt-get install -y jq >/dev/null; }
+  fix_compose
+  ensure_pg_env
+
+  log "فحص البنية التحتية…"
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE" up -d db redis neo4j minio ollama vault >/dev/null 2>&1 || true
+
+  # الخدمات الهدف (لو ps empty نجيب services من compose)
+  mapfile -t services < <(docker compose --env-file "$ENV_FILE" -f "$COMPOSE" ps --services 2>/dev/null || awk '/^[[:space:]]{2}[A-Za-z0-9_-]+:/{gsub(":","");print $1}' "$COMPOSE")
+  [ "${#services[@]}" -eq 0 ] && err "لم استطع قراءة قائمة الخدمات."
+
+  log "بدء فحص / إصلاح للخدمات…"
+  for s in "${services[@]}"; do
+    if http_health "$s"; then
+      log "🟢 $s صحيّ"
+    else
+      warn "🔴 $s غير صحيّ — سيتم الإصلاح"
+      repair_svc "$s"
+    fi
+  done
+
+  make_health_html
+  log "تم."
+}
+
+main "$@"

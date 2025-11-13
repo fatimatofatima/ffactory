@@ -1,0 +1,140 @@
+version: "3.8"
+
+services:
+  # === CORE STACK ===
+  db:
+    image: postgres:16
+    container_name: ffactory-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDB}
+      TZ: ${TZ}
+    volumes:
+      - /opt/ffactory/data/warehouse:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "127.0.0.1:${PGPORT}:5432"
+  redis:
+    image: redis:7-alpine
+    container_name: ffactory-redis
+      - /opt/ffactory/data/cache:/data
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory-minio
+    command: server /data --console-address ":${MINIO_CON}" --json
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      - /opt/ffactory/data/object:/data
+      - "127.0.0.1:${MINIO_PORT}:9000"
+      - "127.0.0.1:${MINIO_CON}:9001"
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ffactory-metabase
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${PGDB}
+      MB_DB_USER: ${PGUSER}
+      MB_DB_PASS: ${PGPASSWORD}
+      MB_DB_HOST: db
+      - "127.0.0.1:3000:3000"
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ffactory-ollama
+    command: serve
+      - "127.0.0.1:11434:11434"
+  # === ADVANCED & AI SERVICES ===
+  # 1. المركز العصبي (AI Core)
+  neural-core:
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      REDIS_URL: redis://redis:6379
+    depends_on: [db, redis]
+      - "127.0.0.1:8000:8000"
+      - neural_models:/models
+      - ../data/training:/training_data:ro
+    # gpus: all # لتمكين CUDA إذا كان متاحًا
+  # 2. تحليل الوسائط الاحترافي
+  media-forensics-pro:
+    build: ../apps/media-forensics-pro
+    container_name: ffactory-media-forensics
+      NEURAL_CORE_URL: http://neural-core:8000
+    depends_on: [neural-core]
+  # 3. ذكاء التواصل الاجتماعي
+  social-intelligence:
+    build: ../apps/social-intelligence
+    container_name: ffactory-social-intelligence
+  # 4. الأمن الكمّي (مفتاح التشفير)
+  quantum-security:
+    build: ../apps/quantum-security
+    container_name: ffactory-quantum-security
+    configs:
+      - source: quantum_keys
+        target: /app/keys/quantum_keys.json
+  # 5. التقارير المدعومة بالذكاء الاصطناعي
+  ai-reporting:
+    build: ../apps/ai-reporting
+    container_name: ffactory-ai-reporting
+      - "127.0.0.1:8080:8080" # واجهة التقارير الخارجية
+  # 6. قاعدة بيانات العلاقات البيانية
+  neo4j:
+    image: neo4j:latest
+    container_name: ffactory-neo4j
+      NEO4J_AUTH: none
+      - "127.0.0.1:7687:7687"
+      - "127.0.0.1:7474:7474"
+  # === BOT SERVICES ===
+  bot-admin:
+    build: ../apps/bot-admin
+    container_name: ffactory-bot-admin
+      REDIS_HOST: redis
+    depends_on: [redis]
+  bot-nextwin:
+    build: ../apps/bot-nextwin
+    container_name: ffactory-bot-nextwin
+volumes:
+  neural_models:
+  
+configs:
+  quantum_keys:
+    file: ./config/quantum_keys.json # يجب أن يكون موجوداً
+# --- الخدمات المحدثة (إضافة مرة واحدة فقط) ---
+    build: ../apps/neural-core
+  correlation-engine:
+    build: ../apps/correlation-engine
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_AUTH: ${NEO4J_AUTH:-none}
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_started
+    
+  risk-analyzer:
+    build: ../apps/risk-analyzer
+    container_name: ffactory-risk-analyzer
+      REDIS_CHANNEL: forensic:events
+      redis:
+
+  neural-core:
+    build: ../apps/neural-core
+    environment:
+      - DB_URL=postgresql://warehouse:ChangeMe_Strong_1@db:5432/analytics
+    depends_on:
+      - db
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  correlation-engine:
+    build: ../apps/correlation-engine
+    environment:
+      - DB_URL=postgresql://warehouse:ChangeMe_Strong_1@db:5432/analytics
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  asr-engine:
+    build: ../apps/asr-engine
+    ports:
+      - "127.0.0.1:8004:8004"
+    restart: unless-stopped

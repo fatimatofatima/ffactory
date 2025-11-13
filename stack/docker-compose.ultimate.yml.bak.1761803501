@@ -1,0 +1,139 @@
+version: "3.8"
+
+services:
+  # === CORE STACK ===
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDB}
+      TZ: ${TZ}
+    volumes:
+      - /opt/ffactory/data/warehouse:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "127.0.0.1:${PGPORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${PGUSER} -d ${PGDB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - /opt/ffactory/data/cache:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":${MINIO_CON}" --json
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - /opt/ffactory/data/object:/data
+    ports:
+      - "127.0.0.1:${MINIO_PORT}:9000"
+      - "127.0.0.1:${MINIO_CON}:9001" # المنافذ يجب أن تكون في سطر منفصل
+
+  metabase:
+    image: metabase/metabase:latest
+    restart: unless-stopped
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${PGDB}
+      MB_DB_USER: ${PGUSER}
+      MB_DB_PASS: ${PGPASSWORD}
+      MB_DB_HOST: db
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    command: serve
+    ports:
+      - "127.0.0.1:11434:11434"
+      
+  # === ADVANCED & AI SERVICES ===
+
+  neural-core:
+    build: ../apps/neural-core
+    environment:
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      REDIS_URL: redis://redis:6379
+    depends_on: [db, redis]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - neural_models:/models
+      - ../data/training:/training_data:ro
+    restart: unless-stopped
+
+  media-forensics-pro:
+    build: ../apps/media-forensics-pro
+    environment:
+      NEURAL_CORE_URL: http://neural-core:8000
+    depends_on: [neural-core]
+    restart: unless-stopped
+
+  social-intelligence:
+    build: ../apps/social-intelligence
+    environment:
+      NEURAL_CORE_URL: http://neural-core:8000
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      REDIS_URL: redis://redis:6379
+    depends_on: [neural-core, db, redis]
+    restart: unless-stopped
+
+  quantum-security:
+    build: ../apps/quantum-security
+    configs:
+      - source: quantum_keys
+        target: /app/keys/quantum_keys.json
+    restart: unless-stopped
+
+  ai-reporting:
+    build: ../apps/ai-reporting
+    environment:
+      NEURAL_CORE_URL: http://neural-core:8000
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+    depends_on: [neural-core, db]
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:latest
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: none
+    ports:
+      - "127.0.0.1:7687:7687"
+      - "127.0.0.1:7474:7474"
+
+  correlation-engine:
+    build: ../apps/correlation-engine
+    environment:
+      DB_URL: postgresql://${PGUSER}:${PGPASSWORD}@db:5432/${PGDB}
+      NEO4J_URI: bolt://neo4j:7687
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_started
+    restart: unless-stopped
+    
+volumes:
+  neural_models:
+  
+configs:
+  quantum_keys:
+    file: ./config/quantum_keys.json
+

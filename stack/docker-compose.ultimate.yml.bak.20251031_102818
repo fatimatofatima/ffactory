@@ -1,0 +1,160 @@
+version: "3.8"
+
+networks: { ffactory_net: {driver: bridge} }
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  neo4j_data: {}
+  minio_data: {}
+  ollama_data: {}
+  asr_models: {}
+  backup_data: {}
+  vault_data: {}
+
+services:
+  # CORE
+  db:
+    image: postgres:16
+    container_name: ffactory_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: 
+      POSTGRES_PASSWORD: ""
+      POSTGRES_DB: 
+    ports: ["127.0.0.1:${PGPORT}:5432"]
+    volumes: [ postgres_data:/var/lib/postgresql/data, ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql ]
+    networks: [ ffactory_net ]
+    healthcheck: { test: ["CMD-SHELL","pg_isready -U ${PGUSER} -d ${PGDB}"], interval: 10s, timeout: 5s, retries: 5 }
+
+  redis:
+    image: redis:7-alpine
+    container_name: ffactory_redis
+    restart: unless-stopped
+    command: ["redis-server","--requirepass",""]
+    ports: ["127.0.0.1:${REDIS_PORT}:6379"]
+    networks: [ ffactory_net ]
+    healthcheck: { test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"], interval: 10s, timeout: 5s, retries: 5 }
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: ffactory_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: ${NEO4J_PLUGINS}
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: ${NEO4J_ACCEPT_LICENSE_AGREEMENT}
+    ports: ["127.0.0.1:${NEO4J_HTTP_PORT}:7474","127.0.0.1:${NEO4J_BOLT_PORT}:7687"]
+    volumes: [ neo4j_data:/data ]
+    networks: [ ffactory_net ]
+    healthcheck: { test: ["CMD-SHELL","wget -q --spider http://localhost:7474 || exit 1"], interval: 15s, timeout: 10s, retries: 3 }
+
+  minio:
+    image: minio/minio:latest
+    container_name: ffactory_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: 
+      MINIO_ROOT_PASSWORD: ""
+    ports: ["127.0.0.1:9000:9000","127.0.0.1:${MINIO_PORT}:9001"]
+    volumes: [ minio_data:/data ]
+    networks: [ ffactory_net ]
+    healthcheck: { test: ["CMD","curl","-f","http://localhost:9000/minio/health/live"], interval: 15s, timeout: 10s, retries: 3 }
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ffactory_ollama
+    restart: unless-stopped
+    ports: ["127.0.0.1:${OLLAMA_PORT}:11434"]
+    volumes: [ ollama_data:/root/.ollama ]
+    networks: [ ffactory_net ]
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ffactory_metabase
+    restart: unless-stopped
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: 
+      MB_DB_USER: 
+      MB_DB_PASS: ""
+      MB_DB_HOST: db
+    networks: [ ffactory_net ]
+    depends_on: { db: { condition: service_healthy } }
+
+  ntp-server:
+    image: cturra/ntp
+    container_name: ffactory_ntp
+    restart: unless-stopped
+    cap_add: [ "SYS_TIME" ]
+    environment: [ "NTP_SERVERS=pool.ntp.org,time.google.com", "INTERNAL_NTP_SERVER=true" ]
+    networks: [ ffactory_net ]
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: ffactory_vault
+    restart: unless-stopped
+    ports: ["127.0.0.1:8200:8200"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root_dev_token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    volumes: [ vault_data:/vault/file ]
+    networks: [ ffactory_net ]
+
+  # APIs & ENGINES (Stubs)
+  investigation-api: { build: { context: ../apps/investigation-api }, container_name: ffactory_investigation_api, restart: unless-stopped, ports: ["127.0.0.1:${INVESTIGATION_API_PORT}:8080"], networks: [ffactory_net], depends_on: [neo4j], healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] } }
+  behavioral-analytics: { build: { context: ../apps/behavioral-analytics }, container_name: ffactory_behavioral_analytics, restart: unless-stopped, ports: ["127.0.0.1:${ANALYTICS_PORT}:8080"], networks: [ffactory_net], depends_on: [redis], healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] } }
+  feedback-api: { build: { context: ../apps/feedback-api }, container_name: ffactory_feedback_api, restart: unless-stopped, ports: ["127.0.0.1:${FEEDBACK_API_PORT}:8080"], networks: [ffactory_net], depends_on: [db], healthcheck: { test: ["CMD","curl","-f","http://localhost:8080/health"] } }
+  neural-core: { build: { context: ../apps/neural-core }, container_name: ffactory_neural_core, restart: unless-stopped, ports: ["127.0.0.1:8000:8080"], networks: [ffactory_net] }
+  correlation-engine: { build: { context: ../apps/correlation-engine }, container_name: ffactory_correlation_engine, restart: unless-stopped, ports: ["127.0.0.1:8005:8080"], networks: [ffactory_net] }
+  asr-engine: { build: { context: ../apps/asr-engine }, container_name: ffactory_asr_engine, restart: unless-stopped, ports: ["127.0.0.1:8004:8080"], volumes: [asr_models:/root/.cache], networks: [ffactory_net] }
+  social-intelligence: { build: { context: ../apps/social-intelligence }, container_name: ffactory_social_intelligence, restart: unless-stopped, networks: [ffactory_net] }
+  quantum-security: { build: { context: ../apps/quantum-security }, container_name: ffactory_quantum_security, restart: unless-stopped, networks: [ffactory_net] }
+  ai-reporting: { build: { context: ../apps/ai-reporting }, container_name: ffactory_ai_reporting, restart: unless-stopped, ports: ["127.0.0.1:${AI_REPORT_PORT}:8080"], networks: [ffactory_net] }
+
+  # Automation & QA
+  orchestrator: { build: { context: ../apps/orchestrator }, container_name: ffactory_orchestrator, restart: unless-stopped, ports: ["127.0.0.1:8060:8060"], networks: [ffactory_net], depends_on: [db, redis] }
+  ingest-service: { build: { context: ../apps/ingest-service }, container_name: ffactory_ingest_service, restart: unless-stopped, ports: ["127.0.0.1:8001:8001"], volumes: [minio_data:/data_minio:ro], networks: [ffactory_net], depends_on: [minio, orchestrator] }
+  error-aggregator: { build: { context: ../apps/error-aggregator }, container_name: ffactory_error_aggregator, restart: unless-stopped, ports: ["127.0.0.1:8075:8075"], networks: [ffactory_net], depends_on: [db] }
+
+  # Advanced Analytics
+  integrity-monitor: { build: { context: ../apps/integrity-monitor }, container_name: ffactory_integrity_monitor, restart: unless-stopped, ports: ["127.0.0.1:8100:8100"], networks: [ffactory_net] }
+  anomaly-detector: { build: { context: ../apps/anomaly-detector }, container_name: ffactory_anomaly_detector, restart: unless-stopped, ports: ["127.0.0.1:8101:8101"], networks: [ffactory_net], depends_on: [redis] }
+  deception-detector: { build: { context: ../apps/deception-detector }, container_name: ffactory_deception_detector, restart: unless-stopped, ports: ["127.0.0.1:8102:8102"], networks: [ffactory_net] }
+  social-analyzer: { build: { context: ../apps/social-analyzer }, container_name: ffactory_social_analyzer, restart: unless-stopped, ports: ["127.0.0.1:8103:8103"], networks: [ffactory_net] }
+  chain-of-custody-manager: { build: { context: ../apps/chain-of-custody-manager }, container_name: ffactory_coc_manager, restart: unless-stopped, environment:
+      REDIS_PASSWORD: ""
+      REDIS_HOST: redis, ports: ["127.0.0.1:8105:8105"], networks: [ffactory_net], depends_on: [redis] }
+
+  # Anti–Anti-Forensics
+  advanced-steganalysis: { build: { context: ../apps/advanced-steganalysis }, container_name: ffactory_advanced_steganalysis, restart: unless-stopped, ports: ["127.0.0.1:8114:8114"], networks: [ffactory_net] }
+  memory-forensics: { build: { context: ../apps/memory-forensics }, container_name: ffactory_memory_forensics, restart: unless-stopped, ports: ["127.0.0.1:8115:8115"], networks: [ffactory_net] }
+  temporal-forensics: { build: { context: ../apps/temporal-forensics }, container_name: ffactory_temporal_forensics, restart: unless-stopped, ports: ["127.0.0.1:8116:8116"], networks: [ffactory_net] }
+
+  # Media & Medical
+  media-forensics-pro: { build: { context: ../apps/media-forensics-pro }, container_name: ffactory_media_forensics, restart: unless-stopped, ports: ["127.0.0.1:8011:8001"], volumes: [minio_data:/data_minio:ro], networks: [ffactory_net] }
+  medical-forensics: { build: { context: ../apps/medical-forensics }, container_name: ffactory_medical_forensics, restart: unless-stopped, ports: ["127.0.0.1:8010:8010"], networks: [ffactory_net] }
+
+  # UI
+  frontend-dashboard:
+    build: { context: ../apps/frontend-dashboard }
+    container_name: ffactory_frontend_dashboard
+    restart: unless-stopped
+    ports: ["0.0.0.0:${FRONTEND_PORT}:3000"]
+    networks: [ ffactory_net ]
+    depends_on:
+      - investigation-api
+      - behavioral-analytics
+      - feedback-api
+
+  # Bots (optional)
+  bot-admin: { build: { context: ../apps/telegram-bots }, container_name: ffactory_bot_admin, environment:
+      BOT_TOKEN: ""
+      BOT_TYPE: admin
+      BOT_ALLOWED_USERS: , networks: [ffactory_net], profiles: ["bots"] }
+  bot-reports: { build: { context: ../apps/telegram-bots }, container_name: ffactory_bot_reports, environment:
+      BOT_TOKEN: ""
+      BOT_TYPE: reports
+      BOT_ALLOWED_USERS: , networks: [ffactory_net], profiles: ["bots"] }

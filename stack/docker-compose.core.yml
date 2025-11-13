@@ -1,68 +1,56 @@
 services:
-  postgres:
+  db:
     image: postgres:16
-    container_name: ff-postgres
+    container_name: ffactory_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ffactory}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ffactory_pass}
-      POSTGRES_DB: ${POSTGRES_DB:-ffactory}
-    volumes:
-      - /opt/ffactory/data/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER:-ffactory} -d ${POSTGRES_DB:-ffactory}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: ff-redis
-    restart: unless-stopped
-    command: ["redis-server","--appendonly","yes"]
-    volumes:
-      - /opt/ffactory/data/redis:/data
-    healthcheck:
-      test: ["CMD","redis-cli","ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  neo4j:
-    image: neo4j:5.22
-    container_name: ff-neo4j
-    restart: unless-stopped
-    environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4jPass}
-      NEO4J_dbms_memory_heap_initial__size: 512M
-      NEO4J_dbms_memory_heap_max__size: 1024M
-      NEO4J_dbms_memory_pagecache_size: 512M
-    volumes:
-      - /opt/ffactory/data/neo4j:/data
+      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      TZ: ${TZ}
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "127.0.0.1:${PG_PORT}:5432"
+    volumes:
+      - ${PG_VOLUME}:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL","wget -qO- http://localhost:7474 || exit 1"]
-      interval: 15s
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DB}"]
+      interval: 10s
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    container_name: ff-minio
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ffactory_ollama
     restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-    command: server /data --console-address ":9001"
-    volumes:
-      - /opt/ffactory/data/minio:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:${OLLAMA_PORT}:11434"
+    environment:
+      - TZ=${TZ}
     healthcheck:
-      test: ["CMD","curl","-fsS","http://localhost:9000/minio/health/ready"]
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
       interval: 15s
       timeout: 5s
-      retries: 10
+      retries: 20
+
+  asr:
+    image: ealen/echo-server
+    container_name: ffactory_asr
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ASR_PORT}:8080"
+    environment:
+      - TZ=${TZ}
+
+  echo:
+    image: ealen/echo-server
+    container_name: ffactory_echo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ECHO_PORT}:8080"
+    environment:
+      - TZ=${TZ}
+
+networks:
+  default:
+    name: ffactory_net
+    driver: bridge
