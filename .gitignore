@@ -1,10 +1,56 @@
+# ملفات حساسة
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# قواعد البيانات
 *.db
 *.sqlite
+*.sql
 backup/
 backups/
+
+# بيئات Python
+__pycache__/
+*.py[cod]
 venv/
 .venv/
+
+# ملفات كبيرة
 *.tar.gz
 *.zip
-logs/
+*.mp4
+*.avi
+*.pdf
+
+# نظام
 cache/
+temp/
+logs/
+models/
+ollama/
+
+# قواعد البيانات
+data/
+warehouse/
+*.db
+*.sqlite
+*.sql
+
+# التقارير واللوجات
+reports/
+audit/
+*.log
+
+# ملفات النسخ الاحتياطي
+*.bak
+*.backup
+
+# PostgreSQL
+pg_wal/
+pg_xact/
+pg_stat/
+pg_multixact/
+pg_subtrans/
